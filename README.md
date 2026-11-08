@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Armando · Robotics Lab 2026 · Classwork 2
 
 Armando is a four-joint robotic arm simulated in Gazebo with ROS 2 Humble. Classwork 2 connects the simulated camera to inverse kinematics. The detector recognizes the ArUco marker on the workbench, an adapter node computes a target above the marker, and the KDL solver moves the end effector to that position.
@@ -124,3 +125,7 @@ ros2 topic pub --once /target_pose geometry_msgs/msg/PoseStamped \
 - **The arm stays still.** Check that the controllers are active, the detector recognizes the selected ID, and the adapter publishes on `/target_pose`. If a target is present, check the KDL and controller logs for a valid solution and an accepted trajectory.
 
 This project is based on the [course starter repository](https://github.com/RoboticsLab2026/Armando_Simulation).
+=======
+# CW2
+Armando_ARUCO
+>>>>>>> 4b0acb0c749ac6941cff9e81300a3c9c4a5012ed
