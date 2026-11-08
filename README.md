@@ -1,233 +1,126 @@
-# armando_sim
+# Armando · Robotics Lab 2026 · Classwork 2
 
-🤖 **Simulation workspace for Armando, a 4-DOF robotic arm in ROS 2 Humble.**
+Armando is a four-joint robotic arm simulated in Gazebo with ROS 2 Humble. Classwork 2 connects the simulated camera to inverse kinematics. The detector recognizes the ArUco marker on the workbench, an adapter node computes a target above the marker, and the KDL solver moves the end effector to that position.
 
-## 📚 Index
+## Setup from a clean environment
 
-- [Overview](#overview)
-- [Repository Structure](#repository-structure)
-- [Docker Environment](#docker-environment)
-- [ROS 2 Packages in `src`](#ros-2-packages-in-src)
-- [Quick Start](#quick-start)
+Use Ubuntu with an X11 or XWayland desktop session, Git, and a running Docker daemon accessible to your user. The startup scripts use `xhost` and pass `/dev/dri` and `/dev/video0` through to the container. The CW2 camera itself is simulated.
 
----
+### 1. Build the Docker image
 
-## Overview
-
-This repository contains the core packages used to simulate **Armando**, a 4-DOF robotic arm developed for educational and research purposes.
-
-The project has two main goals:
-
-1. **Technical reference**: document the software architecture and runtime logic of the robotic arm in a ROS 2 Humble environment.
-2. **Operational guide**: provide a practical workflow for developing, extending, and testing a generic robotic manipulator in simulation before deploying software to real hardware.
-
-The repository is designed to provide a reproducible development environment based on Docker, reducing host-side dependency conflicts and making the simulation stack easier to share across different machines.
-
----
-
-## 🧭 At-a-Glance Workflow
-
-```mermaid
-flowchart LR
-    A[Host Machine] --> B[Docker Scripts]
-    B --> C[Containerized ROS 2 Humble Env]
-    C --> D[armando_description]
-    C --> E[armando_controller]
-    D --> F[Gazebo + RViz]
-    E --> G[Pose Control / Pick & Place / IK]
-```
-
----
-
-## Repository Structure
-
-The workspace is organized around two main directories:
-
-- **`docker_scripts/`**: scripts and configuration used to build, run, and access the Docker-based development environment.
-- **`src/`**: ROS 2 packages and simulation assets, including robot description, controllers, sensors, worlds, and launch files.
-
-This setup keeps the host system clean while giving every developer the same execution environment.
-
-### 🗂️ Structure Scheme
-
-```
-armando_sim/
-├── docker_scripts/
-│   ├── Dockerfile
-│   ├── docker_build_image.sh
-│   ├── docker_run_container.sh
-│   └── docker_connect.sh
-└── src/
-    ├── armando_description/
-    └── armando_controller/
-```
-
----
-
-## Docker Environment
-
-The `docker_scripts/` directory contains the automation needed to manage the container lifecycle.
-
-| File | Purpose |
-| --- | --- |
-| **`Dockerfile`** | Defines the base image built around Ubuntu 22.04 and ROS 2 Humble, installs Gazebo Harmonic support, and prepares the workspace used inside the container. |
-| **`docker_build_image.sh`** | Builds the Docker image. Run it the first time and whenever the Dockerfile changes. |
-| **`docker_run_container.sh`** | Starts the container and configures X11 forwarding so GUI applications such as Gazebo and RViz can run from inside the container. |
-| **`docker_connect.sh`** | Opens an additional shell inside a running container, which is useful for monitoring topics or running commands in parallel. |
-
-### Why Docker Is Used
-
-Containerization is a technical choice, not just a convenience feature. It provides:
-
-1. **Isolation**: every developer uses the same versions of ROS 2, Gazebo, and related dependencies.
-2. **Faster setup**: environment provisioning takes minutes instead of manually reproducing a full robotics stack.
-3. **Portability**: software developed in simulation can be transferred more reliably to the onboard computer used on the real robot.
-
----
-
-## ROS 2 Packages in `src`
-
-The `src/` directory contains the main ROS 2 packages that define the **Armando** simulation stack. The workspace is split into two complementary modules: one focused on robot modeling and simulation assets, and one focused on control.
-
-### armando_description
-
-This package defines the physical and visual representation of the robot. It includes the URDF/Xacro description, simulated sensors, Gazebo worlds, RViz configuration, and launch files.
-
-#### Main contents
-
-- **`urdf/`**: Xacro files describing the robotic arm, including links, joints, and sensor definitions.
-- **`meshes/`** and **`models/`**: 3D geometry and simulation assets for the robot and the environment.
-- **`worlds/`**: SDF worlds used in simulation (e.g., a workbench environment).
-- **`launch/`**: launch files used to start the robot description stack, Gazebo, and RViz.
-- **`config/`**: RViz and controller configuration files for a ready-to-use visualization setup.
-- **`CMakeLists.txt`** and **`package.xml`**: build configuration and package metadata.
-
-#### Launch files
-
-The `armando_description` package includes two main launch files that coordinate the startup of the software environment. Although they are commonly used together, they serve different purposes:
-
-- **`armando_gazebo.launch.py`**: Manages the physical simulation environment in **Gazebo Harmonic**. It computes the robot dynamics, simulates sensors, and loads the virtual world (`.sdf`). It is the simulation engine that generates the runtime data.
+Set `REPO_URL` to the HTTPS URL of your public submission repository, then run:
 
 ```bash
-ros2 launch armando_description armando_gazebo.launch.py
+git clone "git clone https://github.com/andreamarigliano/CW2.git" Armando_Simulation
+cd Armando_Simulation
+bash docker_scripts/docker_build_image.sh
 ```
 
-- **`armando_rviz.launch.py`**: Starts the monitoring and visualization interface in **RViz2**. It does not simulate physics; instead, it subscribes to runtime topics such as TF transforms and camera data, and renders them in a 3D view for the operator.
+The Dockerfile installs ROS 2 Humble, the simulation dependencies, and `ros-humble-aruco-ros`, which brings in `aruco_msgs`. Rebuild the image whenever the Dockerfile changes. Wait for the script to print `Build completed` before starting the container.
+
+### 2. Start Gazebo
+
+In the first terminal, run this from the repository root on the host:
 
 ```bash
-ros2 launch armando_description armando_rviz.launch.py
+bash docker_scripts/docker_run_container.sh
 ```
 
----
-
-### armando_controller
-
-This package provides named joint-pose control, a timed pick-and-place
-trajectory sequence, and a generic Cartesian target solver.
-
-#### Main contents
-
-- **`src/`**: C++ source files for controller nodes.
-- **`include/`**: C++ header files.
-- **`config/`**: YAML configuration files for poses and controller parameters.
-- **`launch/`**: launch files for controller configurations such as KDL IK.
-- **`CMakeLists.txt`** and **`package.xml`**: build configuration and package metadata.
-
-#### Control modes
-
-**1. Predefined Pose Control**
-
-Sends the robot to specific joint configurations saved in `config/poses.yaml`. It uses an Action Client to ensure smooth and synchronized movements.
+The script mounts `src/` from the host, builds the workspace, and sources the ROS environment. Start Gazebo at the container prompt:
 
 ```bash
-ros2 run armando_controller armando_controller_node --ros-args -p pose:="pos0"
+env -u LIBGL_ALWAYS_SOFTWARE ros2 launch armando_description armando_gazebo.launch.py
 ```
 
-> Replace `pos0` with the desired pose name, or use `home` to reset the arm to the zero position.
+Gazebo should show the arm, the workbench, and the marker on the work surface. Keep this terminal open.
 
-**2. Automated Pick & Place**
+### 3. Start the ArUco and KDL pipeline
 
-Executes a timed sequence of joint trajectories and publishes gripper
-attach/detach commands.
+In a second terminal, run this from the repository root on the host:
 
 ```bash
-ros2 run armando_controller armando_pick_place_node
+bash docker_scripts/docker_connect.sh
 ```
 
-The current Gazebo world has no graspable objects or matching gripper plugins,
-so the sequence's attach/detach commands have no effect unless these are added.
-
-**3. KDL Inverse Kinematics**
-
-The generic KDL node subscribes to `/target_pose` (`geometry_msgs/msg/PoseStamped`),
-uses the pose's XYZ position as its target, checks the URDF joint limits, and
-sends a trajectory to the controller. End-effector orientation is not
-constrained.
+Inside the container, source the workspace and check the controllers:
 
 ```bash
-ros2 launch armando_controller armando_ik_kdl.launch.py
+source /root/ros2_ws/install/setup.bash
+ros2 control list_controllers
 ```
 
-Publish a target pose (the example is expressed in `base_link`):
+Wait for both `joint_state_broadcaster` and `joint_trajectory_controller` to report `active`, then start the pipeline:
+
+```bash
+ros2 launch armando_controller aruco_pipeline.launch.py \
+  target_id:=201 offset_distance:=0.30
+```
+
+The pipeline starts the detector and the adapter and includes `armando_ik_kdl.launch.py`. The arm should move above the marker and hold its position. The controller log should report `Goal reached, success!`. The test uses an offset of **0.30 m**. The launch defaults to 0.34 m, so the command specifies the tested value explicitly.
+
+## Marker and scene
+
+| Item | Configuration |
+|---|---|
+| Dictionary | `DICT_5X5_250` |
+| ID | `201` |
+| Black square side length | `0.10 m` |
+| White border | Approximately `0.12857 m` overall side length |
+| Model | `src/armando_description/models/aruco_marker_201/model.sdf` |
+| Texture | `materials/textures/aruco_201.png` inside the model directory |
+| World pose | `0.20 0 0.406 0 0 0` in `armando_workbench.sdf` |
+
+The original 756 × 756 PNG contains the black square and the marker pattern. The material on the 0.10 m plane loads the PNG through `albedo_map`. A separate white backing provides contrast around the border. The `marker_size` parameter is the side length of the black square and is set to `0.10`.
+
+In `rqt_image_view`, select `/camera/image_raw` to check that the entire marker is in view. The launch uses `camera_optical_frame` as the camera frame and expresses the estimated marker pose in `base_link`.
+
+## ROS data flow and target calculation
+
+| Component | Input | Output |
+|---|---|---|
+| `aruco_ros/marker_publisher` detector | `/camera/image_raw` and `/camera/camera_info` | `aruco_msgs/msg/MarkerArray` on `/aruco_marker_publisher/markers` |
+| `marker_to_target_node` adapter | Array of detections | `geometry_msgs/msg/PoseStamped` on `/target_pose` for the selected ID |
+| `armando_ik_kdl_node` solver | `/target_pose`, `/joint_states`, and the URDF | Joint trajectory for `j0`–`j3` via `/joint_trajectory_controller/follow_joint_trajectory` |
+
+The adapter preserves the measurement frame and timestamp. It rotates the vector `(0, 0, d)` by the marker orientation and adds it to the measured marker position. This places the target at distance `d` along the positive normal to the marker plane. The adapter also rotates the target orientation by 180° about the marker's local X axis, so the target's Z axis points toward the marker.
+
+KDL builds the chain from `base_link` to `crawer_base` using the expanded Xacro and uses the current joint positions as its initial guess. It uses TF to transform the target into `base_link` when needed. The solver checks the URDF joint limits and constrains only the XYZ position of `crawer_base`. The target message also carries the orientation calculated by the adapter.
+
+## Verification and target changes
+
+Open another container shell by running `bash docker_scripts/docker_connect.sh` on the host, then source `/root/ros2_ws/install/setup.bash` in the container. Run these commands individually:
+
+```bash
+ros2 topic echo /aruco_marker_publisher/markers --once
+ros2 topic echo /target_pose --once
+ros2 run tf2_ros tf2_echo base_link crawer_base
+```
+
+The first command shows the detected ID and marker pose. The second shows the target published by the adapter. After the motion finishes, compare the TF `Translation` with the position on `/target_pose`. If the arm occludes the marker, you can still check the final end-effector position with TF. To inspect the target before the arm moves, start the pipeline with `start_ik:=false`.
+
+To try a different offset, stop the pipeline and relaunch it with a different `offset_distance`. To move the marker, edit its `<pose>` in `src/armando_description/worlds/armando_workbench.sdf`, rebuild `armando_description`, and restart Gazebo:
+
+```bash
+cd /root/ros2_ws
+colcon build --packages-select armando_description
+source install/setup.bash
+```
+
+Place the marker where the camera can see it and the arm can reach the resulting target. A detectable marker can still produce a target outside the arm's workspace. Run `ros2 launch armando_controller aruco_pipeline.launch.py --show-args` to list the available arguments for marker ID, frames, topics, and simulation time.
+
+## Manual IK test
+
+With Gazebo running and the ArUco pipeline stopped, run `ros2 launch armando_controller armando_ik_kdl.launch.py`. Source the workspace in a second container terminal and publish a test pose:
 
 ```bash
 ros2 topic pub --once /target_pose geometry_msgs/msg/PoseStamped \
   "{header: {frame_id: base_link}, pose: {position: {x: 0.2, y: 0.0, z: 0.3}, orientation: {w: 1.0}}}"
 ```
 
-The simulation and trajectory controller must be running first. The launch
-starts the KDL solver and supplies the expanded robot description. The
-standalone node can also be run with `ros2 run`, provided `robot_description`
-is supplied as a parameter.
+## Troubleshooting
 
-#### Useful commands
+- **Black scene when using the texture.** In the tested setup, the PNG worked when Gazebo was started without forcing software rendering. Use the Gazebo launch command above.
+- **`package 'aruco_ros' not found`.** Rebuild the image from the updated Dockerfile and start a new container. The startup script runs the container with `--rm`.
+- **The arm stays still.** Check that the controllers are active, the detector recognizes the selected ID, and the adapter publishes on `/target_pose`. If a target is present, check the KDL and controller logs for a valid solution and an accepted trajectory.
 
-**Send the robot to the Home position manually via the Action Server:**
-
-```bash
-ros2 action send_goal /joint_trajectory_controller/follow_joint_trajectory control_msgs/action/FollowJointTrajectory "{
-    trajectory: {
-        joint_names: ['j0', 'j1', 'j2', 'j3'],
-        points: [{
-            positions: [0.0, 0.0, 0.0, 0.0],
-            velocities: [0.0, 0.0, 0.0, 0.0],
-            time_from_start: {sec: 2, nanosec: 0}
-        }]
-    }
-}"
-```
-
-Alternatively, using the controller node:
-
-```bash
-ros2 run armando_controller armando_controller_node --ros-args -p pose:="home"
-```
-
----
-
-## Quick Start
-
-To prepare and launch the environment for the first time:
-
-```bash
-chmod +x docker_scripts/*.sh
-./docker_scripts/docker_build_image.sh
-./docker_scripts/docker_run_container.sh
-```
-
-Once the container is running, you can attach additional shells with:
-
-```bash
-./docker_scripts/docker_connect.sh
-```
-
-Inside the container, start RViz and Gazebo:
-
-```bash
-ros2 launch armando_description armando_rviz.launch.py
-ros2 launch armando_description armando_gazebo.launch.py
-```
-
-Now Armando is running inside the simulation environment. You can send it to
-predefined joint poses, run the timed motion sequence, or use the generic KDL
-IK solver with a target pose published on `/target_pose`.
+This project is based on the [course starter repository](https://github.com/RoboticsLab2026/Armando_Simulation).

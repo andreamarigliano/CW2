@@ -71,6 +71,7 @@ RUN apt-get update -o Acquire::Retries=5 && apt-get install -y --no-install-reco
     ros-humble-moveit-ros-planning-interface \
     ros-humble-moveit-ros-move-group \
     ros-humble-moveit-plugins \
+    ros-humble-aruco-ros \
     ros-humble-moveit-kinematics \
     && rm -rf /var/lib/apt/lists/*
 
